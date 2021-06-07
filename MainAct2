@@ -1,0 +1,46 @@
+package com.example.res;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.os.Bundle;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
+    private GoogleMap Map;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_map);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+    }
+
+    private LatLng getLatLang() {
+        String location = getIntent().getStringExtra("loc");
+        String[] split = location.split(",");
+        LatLng latLng = new LatLng(Double.parseDouble(split[0]), Double.parseDouble(split[1]));
+        return latLng;
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        Map = googleMap;
+        if (Map != null) {
+            LatLng mark = getLatLang();
+            Map.addMarker(new MarkerOptions()
+                    .position(mark)
+                    .title("Your location"));
+            Map.setMinZoomPreference(14.0f);
+            Map.moveCamera(CameraUpdateFactory.newLatLng(mark));
+        }
+    }
+
+}
