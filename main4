@@ -1,0 +1,55 @@
+
+package com.example.restaurantmapapp;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.os.Bundle;
+import android.widget.Toast;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.libraries.places.api.Places;
+
+import java.util.ArrayList;
+
+public class ShowAll extends AppCompatActivity implements OnMapReadyCallback {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_show_all);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map_all);
+        mapFragment.getMapAsync(this);
+
+    }
+
+
+    private LatLng getLatLang(String location) {
+        String[] split = location.split(",");
+        LatLng latLng = new LatLng(Double.parseDouble(split[0]), Double.parseDouble(split[1]));
+        return latLng;
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        MyDatabase db = new MyDatabase(this);
+        ArrayList<MyPlace> places = db.getPlaces();
+        if (googleMap != null) {
+            for (MyPlace place : places) {
+                LatLng mark = getLatLang(place.getLocation());
+                googleMap.addMarker(new MarkerOptions()
+                        .position(mark)
+                        .title(place.getName()));
+                googleMap.setMinZoomPreference(6.0f);
+                googleMap.moveCamera(CameraUpdateFactory.newLatLng(mark));
+            }
+
+        }
+    }
+
+}
