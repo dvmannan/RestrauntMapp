@@ -1,0 +1,164 @@
+package com.example.res;
+import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.location.LocationManagerCompat;
+
+import com.google.android.gms.common.api.Status;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.android.libraries.places.widget.Autocomplete;
+import com.google.android.libraries.places.widget.AutocompleteActivity;
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class AddPlace extends AppCompatActivity implements View.OnClickListener {
+    private Button location_Button, show_On_Map, save;
+    private EditText place_name, location;
+    private static int AUTOCOMPLETE_REQUEST_CODE = 1;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_add_place);
+        init();
+    }
+
+    private void init() {
+        Places.initialize(getApplicationContext(), getResources().getString(R.string.map_api_key));
+        PlacesClient placesClient = Places.createClient(this);
+        locataionBtn = findViewById(R.id.get_location);
+        locataionBtn.setOnClickListener(this);
+        placeName = findViewById(R.id.place_name);
+        locationEd = findViewById(R.id.location);
+        locationEd.setFocusable(false);
+        locationEd.setOnClickListener(this);
+        showOnMap = findViewById(R.id.show_on_map_button);
+        showOnMap.setOnClickListener(this);
+        save = findViewById(R.id.save);
+        save.setOnClickListener(this);
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.get_location:
+                if (locationIsOn()) {
+                    getLastKnownLocation();
+                } else {
+                    Toast.makeText(this, "Enable Location", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case R.id.show_on_map_button:
+                if (location.getText().toString().isEmpty()) {
+                    location.setError("required");
+                    Toast.makeText(this, "Location Required", Toast.LENGTH_SHORT).show();
+                } else {
+                    Intent i = new Intent(AddPlace.this, MapActivity.class);
+                    i.putExtra("loc", location.getText().toString());
+                    startActivity(i);
+                }
+                break;
+            case R.id.save:
+                if (!location.getText().toString().isEmpty() && !placeName.getText().toString().isEmpty()) {
+                    savePlace();
+                } else {
+                    Toast.makeText(this, "Fields are required.", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case R.id.location:
+                openGetLocation();
+                break;
+        }
+    }
+
+    private void savePlace() {
+        MyPlace place = new MyPlace(placeName.getText().toString(), location.getText().toString());
+        MyDatabase db = new MyDatabase(this);
+        boolean saved = db.createNewPlace(place);
+        if (saved) {
+            Toast.makeText(this, "Saved Succesfully", Toast.LENGTH_SHORT).show();
+            finish();
+        } else {
+            Toast.makeText(this, "Something bad hapen", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    private void getLastKnownLocation() {
+        LocationManager mLocationManager;
+        if (getApplicationContext().checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mLocationManager = (LocationManager) getApplicationContext().getSystemService(LOCATION_SERVICE);
+            List<String> providers = mLocationManager.getProviders(true);
+            Location bestLocation = null;
+            for (String provider : providers) {
+                Location l = mLocationManager.getLastKnownLocation(provider);
+                if (l == null) {
+                    continue;
+                }
+                if (bestLocation == null || l.getAccuracy() < bestLocation.getAccuracy()) {
+                    // Found best last known location: %s", l);
+                    bestLocation = l;
+                    location.setText(bestLocation.getLatitude() + "," + bestLocation.getLongitude());
+
+                }
+            }
+        } else {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 120);
+        }
+
+    }
+
+    private boolean locationIsOn() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        return LocationManagerCompat.isLocationEnabled(locationManager);
+    }
+
+    private void openGetLocation() {
+
+        // Set the fields to specify which types of place data to
+        // return after the user has made a selection.
+        List<Place.Field> fields = Arrays.asList(Place.Field.LAT_LNG,Place.Field.ID, Place.Field.NAME);
+
+        // Start the autocomplete intent.
+        Intent intent = new Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+                .build(this);
+        startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE);
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && requestCode == 1) {
+            Toast.makeText(this, data.toString(), Toast.LENGTH_SHORT).show();
+            Place place = Autocomplete.getPlaceFromIntent(data);
+            locationEd.setText(place.getLatLng().latitude+","+place.getLatLng().longitude);
+        } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
+            Status status = Autocomplete.getStatusFromIntent(data);
+            Toast.makeText(this, status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+        }
+
+        if (requestCode == 120 && resultCode == RESULT_OK) {
+            getLastKnownLocation();
+        }
+    }
+}
